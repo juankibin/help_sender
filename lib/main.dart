@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -86,6 +88,7 @@ class _LocationAppState extends State<LocationApp> {
 
   Future<void> _showMyDialog() async {
     final prefs = await SharedPreferences.getInstance();
+    // List<String> contacts = prefs.getStringList('contactNums') ?? [];
     _phoneController.text = prefs.getString('contactNum') ?? "-";
     return showDialog<void>(
       context: context,
@@ -123,6 +126,15 @@ class _LocationAppState extends State<LocationApp> {
             TextButton(
               child: const Text('Set'),
               onPressed: () {
+                // //Adding Item
+                // contacts.add("value");
+
+                // //Removing Item
+                // var index = contacts.indexWhere((x) => x == "value");
+                // contacts.removeAt(index);
+
+                // prefs.setStringList("contactNums", contacts); //Saving
+
                 prefs.setString('contactNum', _phoneController.text);
                 Navigator.of(context).pop();
               },
