@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:telephony/telephony.dart';
 
 void main() {
@@ -57,7 +58,7 @@ class _LocationAppState extends State<LocationApp> {
 
   var locationMessage = "";
   var address = "";
-  var message = "";
+  var message = "", link = "";
   late Position position2;
   var lati = "";
   var long = "";
@@ -67,10 +68,9 @@ class _LocationAppState extends State<LocationApp> {
     var lastPosition = await Geolocator.getLastKnownPosition();
 
     setState(() {
-      locationMessage = "$position";
-      message = locationMessage + address;
-      lati = "${position.latitude.toString()}";
-      long = "${position.longitude.toString()}";
+      lati = position.latitude.toString();
+      long = position.longitude.toString();
+      link = "https://www.google.com/maps/@$lati,$long,15z?hl=en";
     });
   }
 
@@ -80,14 +80,57 @@ class _LocationAppState extends State<LocationApp> {
     print(placemark);
     Placemark place = placemark[0];
     address =
-        '${place.street},${place.locality}, ${place.subAdministrativeArea}, ${place.country} ';
-    message = locationMessage + address;
-    message = "HELLO MY FRIEND IM UNDER THE WATER $message " +
-        "https://www.google.com/maps/@" +
-        lati +
-        "," +
-        long +
-        ",15z?hl=en";
+        "${place.street},${place.locality}, ${place.subAdministrativeArea}";
+    message = "$address.\n$link";
+  }
+
+  Future<void> _showMyDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    _phoneController.text = prefs.getString('contactNum') ?? "-";
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Emergency Number'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter number to send';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Phone number',
+                      labelText: 'Number'),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Set'),
+              onPressed: () {
+                prefs.setString('contactNum', _phoneController.text);
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
 //sms sender
@@ -101,8 +144,6 @@ class _LocationAppState extends State<LocationApp> {
   @override
   void initState() {
     super.initState();
-    _phoneController.text = '55555';
-    _msgController.text = "hello" + locationMessage + address;
     _valueSms.text = '1';
   }
 
@@ -133,23 +174,11 @@ class _LocationAppState extends State<LocationApp> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Enter number to send';
-                              }
-                              return null;
+                        ElevatedButton(
+                            onPressed: () async {
+                              _showMyDialog();
                             },
-                            decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                hintText: 'Phone number',
-                                labelText: 'Number'),
-                          ),
-                        ),
+                            child: const Text('Show Dialog')),
                         ElevatedButton(
                             onPressed: () async {
                               Position position = await _determinePosition();
@@ -177,13 +206,8 @@ class _LocationAppState extends State<LocationApp> {
 
   _sendSMS() async {
     try {
-      print(lati);
-
-      print(message);
-      final String msg = message;
-      telephony.sendSms(to: _phoneController.text, message: msg);
-      message = message + "\n Message Sent";
-      print("sent");
+      await telephony.sendSms(
+          to: _phoneController.text, message: "Please Help Me!!! $message");
     } catch (e) {
       print(e);
     }
